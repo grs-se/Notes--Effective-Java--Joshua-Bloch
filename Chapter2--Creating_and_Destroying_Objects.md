@@ -48,7 +48,7 @@ Map<String, List<String>> m =
 	new HashMap<String, List<String>>();
 ```
 
-This redundant specification quickly becomes painful as the length and complexity of the type parameters increase. With static factories, however, the compiler can figure out the type parameters for you. This is known as *type inference.* FOr example, supposed HahMpa provided this static factory:
+This redundant specification quickly becomes painful as the length and complexity of the type parameters increase. With static factories, however, the compiler can figure out the type parameters for you. This is known as *type inference.* FOr example, supposed HahMap provided this static factory:
 
 ```java
 public static <K, V> HashMap<K, V> newInstance() {
@@ -65,7 +65,8 @@ Map<String, List<String>> m = HashMap.newInstance();
 Someday the language may perform this sort of type inference on constructor invocation as well as method invocations, but as of release 1.6 it does not.  
 Unfortunately, the standard collection implementations such as HashMap do not have factory methods  as of release 1.6., but you can put these methods in our own utility classes. More importantly, you can provide such static factories in our own parameterized classes.
 
-**The main disadvantage of providing only static factory methods is that classes without public or protected constructors cannot be subclassed.** The same is true for nonpublic classes returned by public static factories. For example it is impossible to subclass any of the convenience implementation classes in the Collections framework. Arguably this can be a blessing in disguise as it encourages programmers to use composition instead of inheritance. **A second disadvantage of static factory methods is that they are not readily distinguishable from other static methods.** They do not stand out in API documentation in the way that constructors do, so it can be difficult to figure out how to instantiate a class that provides static factory methods instead of constructors. The Javadoc tool may someday draw attention to static factory methods. In the meantime, you can reduce this disadvantage by drawing attention to static factories in class or interface comments, and by adhering to common naming conventions. In summary, static factory methods and public constructors both have their uses, and it pays to understand their relative merits. Often static factories are preferable, so avoid the reflection to provide public constructors without first considering static factories.
+**The main disadvantage of providing only static factory methods is that classes without public or protected constructors cannot be subclassed.** The same is true for nonpublic classes returned by public static factories. For example it is impossible to subclass any of the convenience implementation classes in the Collections framework. Arguably this can be a blessing in disguise as it encourages programmers to use composition instead of inheritance.  
+**A second disadvantage of static factory methods is that they are not readily distinguishable from other static methods.** They do not stand out in API documentation in the way that constructors do, so it can be difficult to figure out how to instantiate a class that provides static factory methods instead of constructors. The Javadoc tool may someday draw attention to static factory methods. In the meantime, you can reduce this disadvantage by drawing attention to static factories in class or interface comments, and by adhering to common naming conventions. In summary, static factory methods and public constructors both have their uses, and it pays to understand their relative merits. Often static factories are preferable, so avoid the reflection to provide public constructors without first considering static factories.
 
 ---
 
@@ -142,3 +143,67 @@ Another way to impose invariants involving multiple parameters is to have setter
 
 - The Builder pattern does have disadvantages of its own. In order to create an object, you must first create its builder. While the cost of creating the builder is unlikely to be noticeable in practice, it could be a problem in some performance critical situations. Also, the Builder pattern is more verbose than the telescoping constructor pattern, so it should be used only if there are enough parameters, say four or more. But keep in mind that you may want to add parameters in the future. If you start out with a constructor or static factories, and add a builder when the class evolves to the point where the numbers of parameters start to get out hand, the obsolete constructors or static factories will stick out like a sore thing., Therefore it's often better step start with a builder in the first place
 - In summary, **the Builder pattern is a good choice when designing classes whose constructors or static factories would have more than a handful of parameters**, especially if most of those parameters are optional. Client code is much easier to read and write with builders than with the traditional telescoping constructs pattern, and builders are much safer than JavaBeans.
+
+---
+
+#### Item 3: Enforce the singleton property with a private constructor or an enum type
+
+A *singleton* is simply a class that is instantiated exactly once. Singletons typically represent a system component that is intrinsically unique, such as the window manager or file system. **Making a class a singleton can make it difficult to test its clients,** as it’s impossible to substitute a mock implementation for a singleton unless it implements an interface that serves its type.  
+Before release 1.5 there were two ways to implement singletons. Both are based on keeping the constructor private and exporting a public static member to provide access to the sole instance. In one approach, the member is a final field:
+
+```java
+// Singleton with public final field
+public class Elvis {
+	public static final Elvis INSTANCE = new Elvis();
+	private Elvis() {...}
+
+	public void leaveTheBuilding() { ... }
+}
+```
+
+The private constructor is called only once, to initialise the public static final field Elvis.INSTANCE. The lack of a public or protected constructor guarantees a "monoelvistic" universe: exactly one Elvis instance will exist once the Elvis class is initialized \- no more, no less. Nothing that a client does can change this, with one caveat: a privileged client can invoke the private constructor reflectively with the aid of the AccessibleObject.setAccessible method. If you need to defend against this attack, modify the constructor to make it throw an exception if it's asked to create a second instance.
+
+In the second approach to implementing singletons, the public member is a static factory method:
+
+```java
+// Singleton with static factory
+public class Elvis {
+    private static final Elvis INSTANCE = new Elvis();
+    private Elvis() { ... }
+    public static Elvis getInstance() { return INSTANCE; }
+    
+    public void leaveTheBuilding() { ... }
+}
+
+```
+
+All calls to Elvis.getInstance return the same object reference, and no other Elvis instance will ever be created (with the same caveat mentioned above)
+
+- The main advantage of the public field approach is that the declarations make it clear that the class is a singleton: the public static field is final, so it will always contain the same object reference.
+- One advantage of the factory method approach is that it gives you the flexibility to change your mind about whether the class should be a singleton without changing its API. The factory method returns the sole instance but could easily be modified to return, say, a unique instance for each thread that invokes it. Often neither of these advantages is relevant, and the public field approach is simpler.
+    - To make a singleton class that is implemented using either of the previous approaches *serializable* it is not sufficient merely to add implements Serializable to its declaration. To maintain the singleton guarantee, you have to declare all instance fields transient and provide a readResolve method. Otherwise, each time a serialized instance is deserialized, a new instance will be created, leading, in the case of our example, to spurious Elvis sightings. To prevent this, add this readResolve method to the Elivs class:
+
+```java
+
+// readResolve method to preserve singleton property
+private Object readResolve() {
+    // Return the one true Elvis and let the garbage collector take care of the Elvis impersonator
+    return INSTANCE;
+}
+```
+
+---
+
+As of release 1.5 there is a third approach to implementing singletons. Simply make an enum type with one element:
+
+```java
+
+// Enum singleton - the preferred approach
+public enum Elvis {
+    INSTANCE;
+    
+    public void leaveTheBuilding() { ... }
+}
+```
+
+- This approach is functionally equivalent to the public field approach, except that it is more concise, provides the serialization machinery for free, and provides an ironclad guarantee against multiple instantiation, even in the face of sophisticated serialisation or reflection attacks. Whilst this approach has yet to be widely adopted, **a single-element enum type is the best way to implement a singleton.**
