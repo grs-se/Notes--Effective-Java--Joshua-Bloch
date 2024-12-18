@@ -1,22 +1,20 @@
-# Learning Journal Entry
+# Learning Journal Entry \- Reading Notes
 
-## Reading Notes
-
-### Effective Java
+## Effective Java
 
 **Second Edition**  
 Joshua Bloch
 
 ---
 
-# Chapter 2: Creating and Destroying Objects
+### Chapter 2: Creating and Destroying Objects
 
 * When and how to create and destroy them
 * When and how to avoid creating them
 * Ensure they are destroyed in a timely manner
 * Manage cleanup operations that proceed their destruction
 
-### Item 1: Consider Static Factory Methods
+#### Item 1: Consider Static Factory Methods
 
 The normal way for a class to allow a client to obtain an instance of itself is to provide a public constructor.  
 A class can provide a public static factory method, which is simply a method that returns an instance of the class.
@@ -43,9 +41,7 @@ The Collections Framework API is much smaller than it would have been had it exp
 …  
 The class of the object returned by a static factory method need not even exist at the time the class containing the method is written. Such flexible static factory methods form the basis of *service provider frameworks,* such as the Java Database Connectivity API (JDBC). A service provider framework is a system in which multiple service providers implement a service and the system makes the implementations available to its clients, decoupling them from the implementations.
 
-```
 **A fourth advantage of static factory methods is that they reduce the verbosity of creating parameterized type instances.** Unfortunately, you must specify the type parameters when you invoke the constructor or a parameterized class even if they’re obvious from context. This typically requires you to provide type parameters twice in quick succession.
-```
 
 ```java
 Map<String, List<String>> m = 
@@ -77,7 +73,7 @@ This passage was directly relevant to a coding problem I encountered in my work 
 
 ---
 
-### Item 2: Consider a builder when faced with many constructor parameters
+#### Item 2: Consider a builder when faced with many constructor parameters
 
 ```java
 // Builder Pattern
